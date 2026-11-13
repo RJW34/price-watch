@@ -2,7 +2,7 @@
 
 A small local eBay watcher for a specific car speaker. Give it search terms and an item-price ceiling; it checks eBay's Browse API and prints a compact digest, optionally sending it to Discord. It alerts once per listing and again after the price falls at least 5% from the last alerted price.
 
-The starter inquiry searches for **Hertz CPK 690** speaker sets with an item price strictly below **$400 USD**. Hertz identifies the CPK 690 as a [Cento Pro model](https://hertz-audio.com/product/cpk-690/); verify that model number and that a listing includes the full set. Shipping and tax are not included in the ceiling. You can change the starter inquiry during setup and add other watches later.
+The starter inquiry searches for **Hertz Cento Pro CPK 690** speaker sets with an item price strictly below **$400 USD**. Check that a listing includes the full set. Shipping and tax are not included in the ceiling. You can change the starter inquiry during setup and add other watches later. [Hertz product details](https://hertz-audio.com/product/cpk-690/).
 
 ## Try the demo
 

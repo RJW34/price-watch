@@ -26,8 +26,7 @@ async function main() {
   let source;
   let useStarter = false;
   if (starter) {
-    console.log('Starter inquiry: Hertz CPK 690 speaker set, item price under 400 USD.');
-    console.log('Hertz calls the CPK 690 Cento Pro; confirm this is the intended model.');
+    console.log('Starter inquiry: Hertz Cento Pro CPK 690 speaker set, item price under 400 USD.');
     source = await ask('\nProduct name or full eBay item URL [Hertz CPK 690]: ');
     useStarter = !source;
     if (useStarter) source = 'Hertz CPK 690';
