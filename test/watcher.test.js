@@ -21,6 +21,16 @@ test('price must be strictly under ceiling and in configured currency', () => {
   assert.equal(qualifies({ ...item, price: { value: '100', currency: 'USD' } }, watch, 'USD'), false);
   assert.equal(qualifies({ ...item, price: { value: '1', currency: 'EUR' } }, watch, 'USD'), false);
   assert.equal(qualifies({ ...item, price: { value: 'NaN', currency: 'USD' } }, watch, 'USD'), false);
+  assert.equal(qualifies({ ...item, price: { value: '', currency: 'USD' } }, watch, 'USD'), false);
+  assert.equal(qualifies({ ...item, itemWebUrl: 'javascript:alert(1)' }, watch, 'USD'), false);
+});
+
+test('zero-priced items do not cause repeated alerts', async () => {
+  const state = { version: 1, alerted: {} }; let messages = 0;
+  const free = { ...item, price: { value: '0.00', currency: 'USD' } };
+  const run = () => processBatch([{ watch: config.watches[0], items: [free] }], state, async () => { messages++; }, async () => {});
+  await run(); await run();
+  assert.equal(messages, 1);
 });
 
 test('alerts once per listing, then only after a drop of at least five percent', async () => {
@@ -89,6 +99,12 @@ test('search sends API filter and excludes ceiling results', async () => {
   assert.equal(request.options.headers['X-EBAY-C-MARKETPLACE-ID'], 'EBAY_US');
 });
 
+test('treats API error payloads as failed searches, not empty results', async () => {
+  await assert.rejects(search(config.watches[0], config, 'token', async () => ({ ok: true, json: async () => ({ errors: [{ errorId: 1 }] }) })), /search error/);
+  await assert.rejects(search(config.watches[0], config, 'token', async () => ({ ok: true, json: async () => ({}) })), /invalid search response/);
+  assert.deepEqual(await search(config.watches[0], config, 'token', async () => ({ ok: true, json: async () => ({ total: 0 }) })), []);
+});
+
 test('authentication encodes client credentials and uses OAuth scope', async () => {
   let request;
   const token = await getToken('id', 'secret', async (url, options) => { request = options; return { ok: true, json: async () => ({ access_token: 'example' }) }; });
@@ -100,6 +116,10 @@ test('authentication encodes client credentials and uses OAuth scope', async () 
 test('Discord rejects non-Discord URLs and reports failed delivery', async () => {
   await assert.rejects(sendDiscord('https://example.com/api/webhooks/x/y', 'hello'), /Discord HTTPS/);
   await assert.rejects(sendDiscord('https://discord.com/api/webhooks/x/y', 'hello', async () => ({ ok: false, status: 429 })), /429/);
+  let options;
+  await sendDiscord('https://discord.com/api/webhooks/x/y', 'hello', async (_url, o) => { options = o; return { ok: true }; });
+  assert.equal(options.redirect, 'error');
+  await assert.rejects(sendDiscord('https://name@discord.com/api/webhooks/x/y', 'hello'), /Discord HTTPS/);
 });
 
 test('extracts item IDs only from supported eBay listing URLs', () => {

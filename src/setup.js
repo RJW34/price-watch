@@ -19,6 +19,7 @@ async function main() {
     if (error.code !== 'ENOENT') throw new Error(`Cannot use existing config: ${error.message}`);
     config = { marketplace: 'EBAY_US', currency: 'USD', intervalMinutes: 30, watches: [] };
   }
+  if (config.watches.length >= 20) throw new Error('The configuration already has 20 watches. Remove one from config.json before adding another.');
   console.log('\nPRODUCT INQUIRY\nFind a product by name or use an eBay listing as a starting point.');
   console.log(`Marketplace: ${config.marketplace}; currency: ${config.currency}. Change these in config.json if needed.`);
   const token = await getToken(process.env.EBAY_CLIENT_ID, process.env.EBAY_CLIENT_SECRET);

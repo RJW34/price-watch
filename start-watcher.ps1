@@ -21,7 +21,7 @@ try {
         $cliArgs = @()
         if ($Once) { $cliArgs += '--once' }
         if ($Help) { $cliArgs += '--help' }
-        if ($Setup) { & node 'src/setup.js' } else { & node 'src/cli.js' @cliArgs }
+        if ($Setup) { & node 'src/setup.js' } else { & node 'src/runner.js' @cliArgs }
         if ($LASTEXITCODE -ne 0) { throw "Watcher exited with code $LASTEXITCODE." }
     } finally { Pop-Location }
 } finally {

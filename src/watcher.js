@@ -7,6 +7,7 @@ export function validateConfig(config) {
   if (!config || !/^[A-Z]{3}$/.test(config.currency || '') || !/^EBAY_[A-Z]+$/.test(config.marketplace || '')) throw new Error('Set a valid currency (e.g. USD) and marketplace (e.g. EBAY_US).');
   if (!Number.isFinite(config.intervalMinutes) || config.intervalMinutes < 5 || config.intervalMinutes > 1440) throw new Error('intervalMinutes must be between 5 and 1440.');
   if (config.notification && !['terminal', 'discord'].includes(config.notification)) throw new Error('notification must be terminal or discord.');
+  if (config.autoUpdate !== undefined && typeof config.autoUpdate !== 'boolean') throw new Error('autoUpdate must be true or false.');
   if (!Array.isArray(config.watches) || config.watches.length === 0) throw new Error('Add at least one watch.');
   if (config.watches.length > 20) throw new Error('At most 20 watches are supported per configuration.');
   const ids = new Set();
@@ -67,11 +68,15 @@ export async function search(watch, config, token, fetchFn = fetch) {
     headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': config.marketplace }, signal: AbortSignal.timeout(15000)
   });
   const data = await jsonResponse(response, 'eBay search');
-  return (data.itemSummaries || []).filter(item => qualifies(item, watch, config.currency));
+  if (Array.isArray(data.errors) && data.errors.length) throw new Error('eBay returned a search error; this check will be retried.');
+  if (data.itemSummaries === undefined && data.total === 0) return [];
+  if (!Array.isArray(data.itemSummaries)) throw new Error('eBay returned an invalid search response.');
+  return data.itemSummaries.filter(item => qualifies(item, watch, config.currency));
 }
 
 export function qualifies(item, watch, currency) {
-  if (!item || !item.itemId || !item.itemWebUrl || item.price?.currency !== currency) return false;
+  if (!item || typeof item.itemId !== 'string' || !item.itemId || typeof item.itemWebUrl !== 'string' || item.price?.currency !== currency || typeof item.price?.value !== 'string' || !/^\d+(?:\.\d+)?$/.test(item.price.value)) return false;
+  try { const url = new URL(item.itemWebUrl); if (url.protocol !== 'https:' || url.username || url.password) return false; } catch { return false; }
   const price = Number(item.price?.value);
   return item.price?.value != null && Number.isFinite(price) && price >= 0 && price < watch.maxPrice;
 }
@@ -85,15 +90,15 @@ export function describe(item, watch) {
 export async function sendDiscord(webhook, message, fetchFn = fetch) {
   if (!webhook) return;
   const url = new URL(webhook);
-  if (url.protocol !== 'https:' || !['discord.com', 'discordapp.com'].includes(url.hostname) || !url.pathname.startsWith('/api/webhooks/')) throw new Error('DISCORD_WEBHOOK_URL must be a Discord HTTPS webhook URL.');
-  const response = await fetchFn(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: message.slice(0, 1900), allowed_mentions: { parse: [] } }), signal: AbortSignal.timeout(15000) });
+  if (url.protocol !== 'https:' || url.username || url.password || url.port || !['discord.com', 'discordapp.com'].includes(url.hostname) || !url.pathname.startsWith('/api/webhooks/')) throw new Error('DISCORD_WEBHOOK_URL must be a Discord HTTPS webhook URL.');
+  const response = await fetchFn(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: message.slice(0, 1900), allowed_mentions: { parse: [] } }), redirect: 'error', signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`Discord notification failed (HTTP ${response.status}); it will be retried on the next check.`);
 }
 
 export async function loadState(file) {
   try {
     const state = JSON.parse(await readFile(file, 'utf8'));
-    if (!state || state.version !== 1 || !state.alerted || typeof state.alerted !== 'object' || Array.isArray(state.alerted)) throw new Error('Invalid state format');
+    if (!state || state.version !== 1 || !state.alerted || typeof state.alerted !== 'object' || Array.isArray(state.alerted) || Object.values(state.alerted).some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)) throw new Error('Invalid state format');
     return state;
   } catch (error) {
     if (error.code === 'ENOENT') return { version: 1, alerted: {} };
@@ -132,7 +137,7 @@ export async function processBatch(batches, state, notify, persist) {
       const isNew = !Object.hasOwn(next.alerted, key);
       // Move seen records to the end, retaining recently seen listings if the cap is reached.
       if (!isNew) { delete next.alerted[key]; next.alerted[key] = previous; }
-      if ((isNew || amount <= previous * 0.95 + 1e-9) && !pendingKeys.has(key)) {
+      if ((isNew || (amount < previous && amount <= previous * 0.95 + 1e-9)) && !pendingKeys.has(key)) {
         pending.push({ key, amount, item, watch });
         pendingKeys.add(key);
       }

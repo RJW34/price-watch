@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A lightweight eBay price watcher for products",
   "scripts": {
-    "start": "node src/cli.js",
+    "start": "node src/runner.js",
     "setup": "node src/setup.js",
     "demo": "node src/cli.js --demo",
     "test": "node --test"

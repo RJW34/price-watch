@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { validateConfig, getToken, search, qualifies, loadState, migrateStateFile, saveState, processBatch, sendDiscord, retryDelayMinutes } from './watcher.js';
+import { checkForUpdate, UPDATE_INTERVAL_MS } from './updater.js';
 
 const args = process.argv.slice(2);
 if (args.includes('--help')) {
@@ -18,6 +19,16 @@ const statePath = resolve('.price-watch-state.json');
 
 async function main() {
   const config = validateConfig(JSON.parse(await readFile(configPath, 'utf8')));
+  let lastUpdateCheck = 0;
+  const updateIfDue = async () => {
+    if (demo || config.autoUpdate === false || process.env.PRICE_WATCH_SUPERVISED !== '1' || Date.now() - lastUpdateCheck < UPDATE_INTERVAL_MS) return false;
+    lastUpdateCheck = Date.now();
+    const result = await checkForUpdate();
+    if (result.status === 'updated') { console.log('An update was installed.'); process.exitCode = 75; return true; }
+    if (result.status === 'skipped') console.log(`Automatic update skipped: ${result.reason}`);
+    return false;
+  };
+  if (await updateIfDue()) return;
   if (!demo) await migrateStateFile(statePath, resolve('.speaker-watch-state.json'));
   const state = demo ? { version: 1, alerted: {} } : await loadState(statePath);
   const run = async () => {
@@ -53,6 +64,7 @@ async function main() {
   if (demo || args.includes('--once')) return run();
   let failures = 0;
   while (true) {
+    if (await updateIfDue()) return;
     try { await run(); failures = 0; } catch (error) { failures++; console.error(error.message); }
     const delay = retryDelayMinutes(config.intervalMinutes, failures);
     console.log(`Next check in ${delay} minute(s)${failures ? ' (retry backoff)' : ''}. Press Ctrl+C to stop.`);

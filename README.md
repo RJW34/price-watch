@@ -15,6 +15,21 @@ npm test
 
 The demo uses invented listings, needs no account or network connection, sends no notifications, and does not save alert history.
 
+## Install and automatic updates
+
+Install [Git](https://git-scm.com/install/) and Node.js 20 or newer, then clone the public repository:
+
+```powershell
+git clone https://github.com/RJW34/price-watch.git
+cd price-watch
+```
+
+When started with `npm start` or `start-watcher.ps1`, Price Watch checks for updates at startup and roughly once every 24 hours while running. It pulls only a fast-forward update from the official repository on the `master` branch, then restarts the watcher to load it. The update can change program code; install it only if you trust the repository owner. Git and internet access are required. Checks are silent when already up to date; a skipped update is reported in the terminal, and the existing version keeps running. A check can take up to 20 seconds per Git command.
+
+If you installed a version from before automatic updates were added, run `git pull --ff-only` once from a clean checkout to install the updater. Later updates can then be applied automatically.
+
+Local changes or untracked files, a different remote or branch, or diverged history prevent an update; the updater never deliberately overwrites them. `config.json`, `.env`, and alert history are ignored by Git and remain in place. Use one watcher process per directory. To disable checks, add `"autoUpdate": false` to `config.json`. Demo mode and directly running `node src/cli.js` do not update. Copies downloaded as ZIP files are not Git checkouts and cannot update automatically; install with `git clone` or download a fresh copy, retaining your configuration and alert history separately.
+
 ## Set up live checks
 
 1. Create an [eBay developer account and application](https://developer.ebay.com/). Obtain **production** client ID and client secret, and ensure your application has access to the [Browse API](https://developer.ebay.com/develop/api/buy/browse_api). Production Buy API access may require eBay approval; an API key alone may not grant it.
