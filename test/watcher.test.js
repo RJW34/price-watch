@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateConfig, qualifies, processBatch, search, sendDiscord, getToken, listingId, getListing, MAX_HISTORY, retryDelayMinutes } from '../src/watcher.js';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { validateConfig, qualifies, processBatch, search, sendDiscord, getToken, listingId, getListing, MAX_HISTORY, retryDelayMinutes, migrateStateFile } from '../src/watcher.js';
 
 const config = { marketplace: 'EBAY_US', currency: 'USD', intervalMinutes: 30, watches: [{ id: 'speaker', query: 'specific speaker', maxPrice: 100 }] };
 const item = { itemId: 'one', itemWebUrl: 'https://www.ebay.com/itm/1', title: 'Speaker', price: { value: '99.99', currency: 'USD' } };
@@ -60,6 +63,21 @@ test('backs off failed checks and caps the delay', () => {
   assert.equal(retryDelayMinutes(30, 0), 30);
   assert.equal(retryDelayMinutes(30, 1), 60);
   assert.equal(retryDelayMinutes(30, 20), 1440);
+});
+
+test('moves old alert history once and never replaces newer history', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'price-watch-'));
+  const oldPath = join(dir, 'old.json');
+  const newPath = join(dir, 'new.json');
+  try {
+    await writeFile(oldPath, 'old history');
+    await migrateStateFile(newPath, oldPath);
+    assert.equal(await readFile(newPath, 'utf8'), 'old history');
+    await writeFile(oldPath, 'other history');
+    await migrateStateFile(newPath, oldPath);
+    assert.equal(await readFile(newPath, 'utf8'), 'old history');
+    assert.equal(await readFile(oldPath, 'utf8'), 'other history');
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
 test('search sends API filter and excludes ceiling results', async () => {

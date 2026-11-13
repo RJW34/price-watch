@@ -1,4 +1,4 @@
-# Speaker Watch
+# Price Watch
 
 A small local eBay watcher for a specific car speaker. Give it search terms and an item-price ceiling; it checks eBay's Browse API and prints a compact digest, optionally sending it to Discord. It alerts once per listing and again after the price falls at least 5% from the last alerted price.
 
@@ -49,7 +49,7 @@ Choose **terminal** or **Discord** alerts during setup. Discord needs a channel 
 - Keyword results can be unrelated, incomplete, or incorrectly described. This is not an AI verifier: open each listing to check the exact model, condition, fit, quantity, seller, and delivered cost. It does not purchase anything.
 - eBay's search and result limits mean checks do not guarantee every listing is found. Prices and availability can change between checks.
 - Each check sends at most one digest across all watches, showing up to five listings and a count of the rest. All results in a successfully delivered digest are recorded, including omitted results, to avoid follow-up spam; look on eBay for the rest. The first live run includes existing qualifying results. Further alerts require a price drop of at least 5% since that listing's last alert.
-- Alert history is stored in `.speaker-watch-state.json` in the current working directory and capped at 10,000 entries. If the cap is reached, the least recently observed entries are removed; an evicted listing may alert again if it reappears. Delete the file to reset all history. Changing a watch's query or threshold while retaining its `id` retains history; use a new `id` to treat it as a new watch. A Discord delivery failure leaves new results unrecorded for retry. With terminal alerts, terminal output counts as delivery. An interruption after delivery but before the history file is saved can cause a repeated digest.
+- Alert history is stored in `.price-watch-state.json` in the current working directory and capped at 10,000 entries. On the first run after upgrading, an existing `.speaker-watch-state.json` is renamed automatically if the new file does not already exist. If the cap is reached, the least recently observed entries are removed; an evicted listing may alert again if it reappears. Delete the file to reset all history. Changing a watch's query or threshold while retaining its `id` retains history; use a new `id` to treat it as a new watch. A Discord delivery failure leaves new results unrecorded for retry. With terminal alerts, terminal output counts as delivery. An interruption after delivery but before the history file is saved can cause a repeated digest.
 
 `marketplace` and `currency` must match the eBay marketplace you use. The project is configured for US searches by default; it doesn't request a shipping destination. Run only one watcher instance per working directory to avoid conflicting state writes.
 

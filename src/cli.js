@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { validateConfig, getToken, search, qualifies, loadState, saveState, processBatch, sendDiscord, retryDelayMinutes } from './watcher.js';
+import { validateConfig, getToken, search, qualifies, loadState, migrateStateFile, saveState, processBatch, sendDiscord, retryDelayMinutes } from './watcher.js';
 
 const args = process.argv.slice(2);
 if (args.includes('--help')) {
@@ -14,10 +14,11 @@ if (args.some((arg, i) => !['--once', '--demo', '--config'].includes(arg) && arg
 const demo = args.includes('--demo');
 const configIndex = args.indexOf('--config');
 const configPath = resolve(configIndex >= 0 ? args[configIndex + 1] : demo ? 'config.example.json' : 'config.json');
-const statePath = resolve('.speaker-watch-state.json');
+const statePath = resolve('.price-watch-state.json');
 
 async function main() {
   const config = validateConfig(JSON.parse(await readFile(configPath, 'utf8')));
+  if (!demo) await migrateStateFile(statePath, resolve('.speaker-watch-state.json'));
   const state = demo ? { version: 1, alerted: {} } : await loadState(statePath);
   const run = async () => {
     console.log(`\nChecking ${config.watches.length} watch(es) at ${new Date().toISOString()}${demo ? ' (demo data)' : ''}`);

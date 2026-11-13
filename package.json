@@ -1,9 +1,9 @@
 {
-  "name": "speaker-watch",
+  "name": "price-watch",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "A small eBay price watcher for hard-to-find speakers",
+  "description": "A lightweight eBay price watcher for products",
   "scripts": {
     "start": "node src/cli.js",
     "setup": "node src/setup.js",

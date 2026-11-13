@@ -1,4 +1,4 @@
-import { readFile, writeFile, rename } from 'node:fs/promises';
+import { access, readFile, writeFile, rename } from 'node:fs/promises';
 
 const API = 'https://api.ebay.com';
 const SCOPE = 'https://api.ebay.com/oauth/api_scope';
@@ -101,6 +101,11 @@ export async function loadState(file) {
   }
 }
 
+export async function migrateStateFile(file, legacyFile) {
+  try { await access(file); return; } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  try { await rename(legacyFile, file); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
+
 export async function saveState(file, state) {
   const temp = `${file}.tmp`;
   await writeFile(temp, JSON.stringify(state, null, 2) + '\n', 'utf8');
@@ -134,7 +139,7 @@ export async function processBatch(batches, state, notify, persist) {
     }
   }
   if (pending.length) {
-    const lines = [`Speaker Watch: ${pending.length} new or reduced listing(s).`];
+    const lines = [`Price Watch: ${pending.length} new or reduced listing(s).`];
     for (const { item, watch } of pending.slice(0, DIGEST_ITEMS)) {
       const title = String(item.title || 'Untitled listing').replace(/[\r\n]/g, ' ').slice(0, 80);
       // Strip tracking parameters to keep links compact.
