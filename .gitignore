@@ -2,5 +2,6 @@ config.json
 .env
 .speaker-watch-state.json
 .price-watch-state.json
+.price-watch-update/
 *.tmp
 node_modules/

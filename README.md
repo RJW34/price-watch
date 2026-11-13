@@ -17,18 +17,17 @@ The demo uses invented listings, needs no account or network connection, sends n
 
 ## Install and automatic updates
 
-Install [Git](https://git-scm.com/install/) and Node.js 20 or newer, then clone the public repository:
+Install [Node.js 20 or newer](https://nodejs.org/). Then [download the ZIP](https://github.com/RJW34/price-watch/archive/refs/heads/master.zip), extract it to a folder you can write to, and open a terminal in that folder. You can also install with Git if you prefer.
 
-```powershell
-git clone https://github.com/RJW34/price-watch.git
-cd price-watch
-```
-
-When started with `npm start` or `start-watcher.ps1`, Price Watch checks for updates at startup and roughly once every 24 hours while running. It pulls only a fast-forward update from the official repository on the `master` branch, then restarts the watcher to load it. The update can change program code; install it only if you trust the repository owner. Git and internet access are required. Checks are silent when already up to date; a skipped update is reported in the terminal, and the existing version keeps running. A check can take up to 20 seconds per Git command.
+When started with `npm start` or `start-watcher.ps1`, Price Watch checks for updates at startup and roughly once every 24 hours while running. A ZIP installation downloads updates from the official repository over HTTPS and verifies their hashes against its update manifest. It backs up program files during installation and restarts the watcher afterward. Git is not needed for ZIP updates. Updates change program code, so use this feature only if you trust the repository owner. Hashes protect against damaged downloads; they are obtained from the same repository and are not an independent digital signature. Internet access is required. Checks are silent when already up to date; a skipped update is reported in the terminal, and the installed version keeps running.
 
 If you installed a version from before automatic updates were added, run `git pull --ff-only` once from a clean checkout to install the updater. Later updates can then be applied automatically.
 
-Local changes or untracked files, a different remote or branch, or diverged history prevent an update; the updater never deliberately overwrites them. `config.json`, `.env`, and alert history are ignored by Git and remain in place. Use one watcher process per directory. To disable checks, add `"autoUpdate": false` to `config.json`. Demo mode and directly running `node src/cli.js` do not update. Copies downloaded as ZIP files are not Git checkouts and cannot update automatically; install with `git clone` or download a fresh copy, retaining your configuration and alert history separately.
+For a ZIP install, changes to managed program files or a collision with a new file prevent an update; personal configuration and alert history are not managed by the updater. For a Git checkout, local changes or untracked files, a different remote or branch, or diverged history prevent updates; Git must be installed and the updater only fast-forwards. `config.json`, `.env`, and alert history remain in place. Use one watcher process per directory. To disable checks, add `"autoUpdate": false` to `config.json`. Demo mode and directly running `node src/cli.js` do not update. A ZIP downloaded before ZIP updating was added must be replaced once with a new download; copy your configuration and alert history into the new folder.
+
+If an update is interrupted, Price Watch attempts to restore its backup before the next launch. If it reports that recovery needs attention, keep the `.price-watch-update` folder and the existing files so the backup can be examined; do not delete them until recovery is complete.
+
+Maintainers must run `npm run build:update-manifest` after changing any managed files, commit the resulting `update-manifest.json` with those changes, and test before pushing. ZIP auto-updates use that manifest; a stale manifest prevents them from working correctly.
 
 ## Set up live checks
 

@@ -47,6 +47,16 @@ test('reports already current and handles missing Git without stopping the watch
   assert.equal(result.status, 'skipped');
 });
 
+test('selects ZIP updating without running Git for an extracted installation', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'price-watch-zip-detect-'));
+  try {
+    let called = false;
+    const result = await checkForUpdate({ cwd: dir, runZip: async ({ cwd }) => { called = cwd === dir; return { status: 'current' }; } });
+    assert.equal(called, true);
+    assert.equal(result.status, 'current');
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
 test('fast-forwards a real Git checkout while preserving ignored settings', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'price-watch-update-'));
   const remote = join(dir, 'remote.git'), source = join(dir, 'source'), installed = join(dir, 'installed');
@@ -86,6 +96,7 @@ test('runner restarts its worker after an installed update', async () => {
     const runner = await readFile(fileURLToPath(new URL('../src/runner.js', import.meta.url)), 'utf8');
     await writeFile(join(dir, 'package.json'), '{"type":"module"}');
     await writeFile(join(dir, 'runner.js'), runner);
+    await writeFile(join(dir, 'zip-updater.js'), 'export async function recoverZipUpdate() {}');
     await writeFile(join(dir, 'cli.js'), "import { existsSync, writeFileSync } from 'node:fs'; if (!existsSync('restarted')) { writeFileSync('restarted','yes'); process.exitCode=75; } else console.log('new worker started');");
     const result = await execFile(process.execPath, [join(dir, 'runner.js')], { cwd: dir, timeout: 10000 });
     assert.match(result.stdout, /Restarting Price Watch/);

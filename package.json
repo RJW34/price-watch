@@ -8,7 +8,8 @@
     "start": "node src/runner.js",
     "setup": "node src/setup.js",
     "demo": "node src/cli.js --demo",
-    "test": "node --test"
+    "test": "node --test",
+    "build:update-manifest": "node scripts/build-update-manifest.js"
   },
   "engines": { "node": ">=20" }
 }

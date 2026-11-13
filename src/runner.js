@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
+import { recoverZipUpdate } from './zip-updater.js';
 
 const worker = join(dirname(fileURLToPath(import.meta.url)), 'cli.js');
 let child;
@@ -15,4 +16,7 @@ function run() {
     process.exitCode = code ?? (signal ? 1 : 0);
   });
 }
-run();
+recoverZipUpdate(dirname(dirname(worker))).then(run).catch(error => {
+  console.error(`Cannot safely recover an interrupted update: ${error.message}`);
+  process.exitCode = 1;
+});

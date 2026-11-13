@@ -2,6 +2,8 @@ import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { lstat } from 'node:fs/promises';
+import { updateZip } from './zip-updater.js';
 
 const execFile = promisify(execFileCallback);
 export const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,8 +19,12 @@ async function git(args, cwd) {
 }
 
 // Only update an unmodified checkout of the official repository on its default branch.
-export async function checkForUpdate({ cwd = PROJECT_ROOT, runGit = git } = {}) {
+export async function checkForUpdate({ cwd = PROJECT_ROOT, runGit = git, runZip = updateZip } = {}) {
   try {
+    if (runGit === git) {
+      try { await lstat(resolve(cwd, '.git')); }
+      catch (error) { if (error.code === 'ENOENT') return await runZip({ cwd }); throw error; }
+    }
     const root = await runGit(['rev-parse', '--show-toplevel'], cwd);
     if (resolve(root).toLowerCase() !== resolve(cwd).toLowerCase()) return { status: 'skipped', reason: 'Not a standalone Git checkout.' };
     const origin = await runGit(['remote', 'get-url', 'origin'], cwd);
