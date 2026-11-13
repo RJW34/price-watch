@@ -2,6 +2,8 @@
 
 A small local eBay watcher for a specific car speaker. Give it search terms and an item-price ceiling; it checks eBay's Browse API and prints a compact digest, optionally sending it to Discord. It alerts once per listing and again after the price falls at least 5% from the last alerted price.
 
+The starter inquiry searches for **Hertz CPK 690** speaker sets with an item price strictly below **$400 USD**. Hertz identifies the CPK 690 as a [Cento Pro model](https://hertz-audio.com/product/cpk-690/); verify that model number and that a listing includes the full set. Shipping and tax are not included in the ceiling. You can change the starter inquiry during setup and add other watches later.
+
 ## Try the demo
 
 Install [Node.js 20 or newer](https://nodejs.org/) and run these commands from this folder:
@@ -24,7 +26,7 @@ The demo uses invented listings, needs no account or network connection, sends n
    $env:EBAY_CLIENT_SECRET = $credential.GetNetworkCredential().Password
    ```
 
-3. Run `npm run setup` to create a product inquiry. Alternatively copy `config.example.json` to `config.json` and edit it manually. The example model is a placeholder. Give each additional watch a distinct, stable `id`.
+3. Run `npm run setup` to create a product inquiry. Press Enter to use the starter product and price, or enter another name or listing link. Run setup again to add watches. Alternatively copy `config.example.json` to `config.json` and edit it manually. Give each additional watch a distinct, stable `id`.
 4. Choose terminal or Discord alerts. For Discord setup, follow the [alert guide](ALERTS.md); the webhook must be set in the same terminal.
 5. Run `npm start -- --once` for one check, or `npm start` to check repeatedly while the terminal is open. Stop with Ctrl+C. To use another configuration file, add `--config path/to/config.json`.
 

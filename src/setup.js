@@ -22,7 +22,16 @@ async function main() {
   console.log('\nPRODUCT INQUIRY\nFind a product by name or use an eBay listing as a starting point.');
   console.log(`Marketplace: ${config.marketplace}; currency: ${config.currency}. Change these in config.json if needed.`);
   const token = await getToken(process.env.EBAY_CLIENT_ID, process.env.EBAY_CLIENT_SECRET);
+  const starter = config.watches.length === 0;
   let source;
+  let useStarter = false;
+  if (starter) {
+    console.log('Starter inquiry: Hertz CPK 690 speaker set, item price under 400 USD.');
+    console.log('Hertz calls the CPK 690 Cento Pro; confirm this is the intended model.');
+    source = await ask('\nProduct name or full eBay item URL [Hertz CPK 690]: ');
+    useStarter = !source;
+    if (useStarter) source = 'Hertz CPK 690';
+  }
   while (!source) source = await ask('\nProduct name or full eBay item URL: ');
   let suggestion = source;
   if (/^https?:\/\//i.test(source)) {
@@ -47,7 +56,10 @@ async function main() {
     console.log('Enter 1–100 characters without a wildcard (*).');
   }
   let maxPrice;
-  do { maxPrice = Number(await ask(`Alert when item price is below (${config.currency}): `)); } while (!Number.isFinite(maxPrice) || maxPrice <= 0);
+  do {
+    const answer = await ask(`Alert when item price is below (${config.currency})${useStarter ? ' [400]' : ''}: `);
+    maxPrice = Number(answer || (useStarter ? '400' : ''));
+  } while (!Number.isFinite(maxPrice) || maxPrice <= 0);
   console.log('The ceiling excludes shipping, tax, and fees. Exact-ceiling prices do not qualify.');
   let id = `watch-${Date.now()}`;
   while (config.watches.some(w => w.id === id)) id += 'x';
@@ -64,7 +76,8 @@ async function main() {
   console.log('\nNOTIFICATIONS\n1. Terminal only: shown while the watcher is running.\n2. Discord: sent to a channel via your webhook, and shown in the terminal.\nSee ALERTS.md for step-by-step setup and troubleshooting.');
   if (config.watches.length) console.log('This choice applies to every watch in this configuration.');
   let choice;
-  do { choice = (await ask('Choose 1 or 2 [1]: ')) || '1'; } while (!['1', '2'].includes(choice));
+  const defaultChoice = config.notification === 'discord' ? '2' : '1';
+  do { choice = (await ask(`Choose 1 or 2 [${defaultChoice}]: `)) || defaultChoice; } while (!['1', '2'].includes(choice));
   config.notification = choice === '2' ? 'discord' : 'terminal';
   if (config.notification === 'discord') {
     console.log('Set DISCORD_WEBHOOK_URL in the same terminal before starting the watcher. The webhook is not stored in config.json.');

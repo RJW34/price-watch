@@ -4,9 +4,9 @@
   "intervalMinutes": 30,
   "watches": [
     {
-      "id": "my-speaker",
-      "query": "JL Audio 10W3v3-4 car subwoofer",
-      "maxPrice": 200
+      "id": "hertz-cpk-690",
+      "query": "Hertz CPK 690",
+      "maxPrice": 400
     }
   ]
 }
