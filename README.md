@@ -17,7 +17,9 @@ The demo uses invented listings, needs no account or network connection, sends n
 
 ## Install and automatic updates
 
-Install [Node.js 20 or newer](https://nodejs.org/). Then [download the ZIP](https://github.com/RJW34/price-watch/archive/refs/heads/master.zip), extract it to a folder you can write to, and open a terminal in that folder. You can also install with Git if you prefer.
+On Windows, install [Node.js 20 or newer](https://nodejs.org/), [download the ZIP](https://github.com/RJW34/price-watch/archive/refs/heads/master.zip), and extract it. Open the extracted `scripts` folder and double-click `Install-PriceWatch.cmd`. The installer puts Price Watch in your user account's Programs folder and creates a Start menu shortcut. Open **Price Watch** from the Start menu to run setup and start watching. The terminal-based instructions below also work for users who prefer them.
+
+When upgrading an existing installation, the installer transfers its configuration and alert history and removes the replaced program files. If you have older extracted copies elsewhere, select each folder when prompted; the installer checks that it is a Price Watch copy, transfers settings where needed, and removes its recognized program files. It leaves personal files and unrecognized folders alone. If several copies have different settings, the current installed copy takes priority, followed by the folders selected in order. Git checkouts are not removed. The installer cannot find arbitrary old ZIP folders automatically; they need to be selected.
 
 When started with `npm start` or `start-watcher.ps1`, Price Watch checks for updates at startup and roughly once every 24 hours while running. A ZIP installation downloads updates from the official repository over HTTPS and verifies their hashes against its update manifest. It backs up program files during installation and restarts the watcher afterward. Git is not needed for ZIP updates. Updates change program code, so use this feature only if you trust the repository owner. Hashes protect against damaged downloads; they are obtained from the same repository and are not an independent digital signature. Internet access is required. Checks are silent when already up to date; a skipped update is reported in the terminal, and the installed version keeps running.
 
@@ -31,7 +33,7 @@ Maintainers must run `npm run build:update-manifest` after changing any managed 
 
 ## Set up live checks
 
-1. Create an [eBay developer account and application](https://developer.ebay.com/). Obtain **production** client ID and client secret, and ensure your application has access to the [Browse API](https://developer.ebay.com/develop/api/buy/browse_api). Production Buy API access may require eBay approval; an API key alone may not grant it.
+1. Until the shared service is available to users, create an [eBay developer account and application](https://developer.ebay.com/). Obtain **production** client ID and client secret, and ensure your application has access to the [Browse API](https://developer.ebay.com/develop/api/buy/browse_api). Production Buy API access may require eBay approval; an API key alone may not grant it.
 2. In PowerShell, set credentials for the current terminal session. Enter them at the prompts rather than putting them in a command or the repository:
 
    ```powershell
@@ -47,6 +49,8 @@ Maintainers must run `npm run build:update-manifest` after changing any managed 
 On the original development computer, `start-watcher.ps1` can also load an existing Windows-encrypted credential file outside this repository. Other users can use the environment-variable setup above; the repository does not include credentials.
 
 Keep the computer awake and the process running for continuous monitoring. The default interval is 30 minutes; permitted values range from 5 to 1,440 minutes. Each check uses one search request per watch (up to 20 watches) plus authentication. Consider eBay's usage limits when choosing the interval. After failures, retry delays double up to 24 hours and return to normal after a successful check. Credentials are read from environment variables, not the configuration file. Windows environment variables set this way last only for that terminal session.
+
+The repository also contains an experimental shared-service implementation in `src/service.mjs` and `scripts/service-schema.sql`. The client can use a configured HTTPS `serviceUrl` instead of local eBay credentials, but a reachable shared service is not yet enabled for end users. Until one is available, the eBay credential setup above remains necessary. The service limits eBay requests globally and per client; the application owner is responsible for configuring secrets, hosting, quota monitoring, and checking eBay's requirements for end-user access.
 
 ## Product inquiry and notifications
 

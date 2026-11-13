@@ -33,7 +33,7 @@ async function main() {
   const state = demo ? { version: 1, alerted: {} } : await loadState(statePath);
   const run = async () => {
     console.log(`\nChecking ${config.watches.length} watch(es) at ${new Date().toISOString()}${demo ? ' (demo data)' : ''}`);
-    const token = demo ? null : await getToken(process.env.EBAY_CLIENT_ID, process.env.EBAY_CLIENT_SECRET);
+    const token = demo || config.serviceUrl ? null : await getToken(process.env.EBAY_CLIENT_ID, process.env.EBAY_CLIENT_SECRET);
     let failures = 0;
     const batches = [];
     for (const watch of config.watches) {

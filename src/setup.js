@@ -18,11 +18,12 @@ async function main() {
   catch (error) {
     if (error.code !== 'ENOENT') throw new Error(`Cannot use existing config: ${error.message}`);
     config = { marketplace: 'EBAY_US', currency: 'USD', intervalMinutes: 30, watches: [] };
+    if (process.env.PRICE_WATCH_SERVICE_URL) config.serviceUrl = process.env.PRICE_WATCH_SERVICE_URL;
   }
   if (config.watches.length >= 20) throw new Error('The configuration already has 20 watches. Remove one from config.json before adding another.');
   console.log('\nPRODUCT INQUIRY\nFind a product by name or use an eBay listing as a starting point.');
   console.log(`Marketplace: ${config.marketplace}; currency: ${config.currency}. Change these in config.json if needed.`);
-  const token = await getToken(process.env.EBAY_CLIENT_ID, process.env.EBAY_CLIENT_SECRET);
+  const token = config.serviceUrl ? null : await getToken(process.env.EBAY_CLIENT_ID, process.env.EBAY_CLIENT_SECRET);
   const starter = config.watches.length === 0;
   let source;
   let useStarter = false;

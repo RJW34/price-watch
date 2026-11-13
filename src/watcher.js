@@ -8,6 +8,12 @@ export function validateConfig(config) {
   if (!Number.isFinite(config.intervalMinutes) || config.intervalMinutes < 5 || config.intervalMinutes > 1440) throw new Error('intervalMinutes must be between 5 and 1440.');
   if (config.notification && !['terminal', 'discord'].includes(config.notification)) throw new Error('notification must be terminal or discord.');
   if (config.autoUpdate !== undefined && typeof config.autoUpdate !== 'boolean') throw new Error('autoUpdate must be true or false.');
+  if (config.serviceUrl !== undefined) {
+    try {
+      const service = new URL(config.serviceUrl);
+      if (service.protocol !== 'https:' || service.username || service.password || service.pathname !== '/' || service.search || service.hash) throw new Error('invalid');
+    } catch { throw new Error('serviceUrl must be an HTTPS origin without a path.'); }
+  }
   if (!Array.isArray(config.watches) || config.watches.length === 0) throw new Error('Add at least one watch.');
   if (config.watches.length > 20) throw new Error('At most 20 watches are supported per configuration.');
   const ids = new Set();
@@ -15,6 +21,7 @@ export function validateConfig(config) {
     if (!watch || typeof watch.id !== 'string' || !/^[a-zA-Z0-9_-]{1,40}$/.test(watch.id) || ids.has(watch.id)) throw new Error('Each watch needs a unique id of up to 40 letters, numbers, underscores, or hyphens.');
     if (typeof watch.query !== 'string' || !watch.query.trim() || watch.query.length > 100) throw new Error(`Watch ${watch.id}: query must be 1–100 characters.`);
     if (typeof watch.maxPrice !== 'number' || !Number.isFinite(watch.maxPrice) || watch.maxPrice <= 0) throw new Error(`Watch ${watch.id}: maxPrice must be a positive number.`);
+    if (config.serviceUrl && (!/^\d{1,9}(?:\.\d{1,2})?$/.test(String(watch.maxPrice)) || watch.query.includes('*'))) throw new Error(`Watch ${watch.id}: the shared service requires a price with at most two decimal places and no wildcard (*).`);
     ids.add(watch.id);
   }
   return config;
@@ -31,11 +38,11 @@ export function listingId(input) {
 
 export async function getListing(id, config, token, fetchFn = fetch) {
   if (!/^\d{9,15}$/.test(id)) throw new Error('Invalid eBay item ID.');
-  const params = new URLSearchParams({ legacy_item_id: id });
-  const response = await fetchFn(`${API}/buy/browse/v1/item/get_item_by_legacy_id?${params}`, {
-    headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': config.marketplace }, signal: AbortSignal.timeout(15000)
-  });
-  const data = await jsonResponse(response, 'eBay listing lookup');
+  const params = new URLSearchParams(config.serviceUrl ? { id, marketplace: config.marketplace, currency: config.currency } : { legacy_item_id: id });
+  const url = config.serviceUrl ? `${config.serviceUrl.replace(/\/$/, '')}/v1/inquiry/reference?${params}` : `${API}/buy/browse/v1/item/get_item_by_legacy_id?${params}`;
+  const headers = config.serviceUrl ? {} : { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': config.marketplace };
+  const response = await fetchFn(url, { headers, redirect: 'error', signal: AbortSignal.timeout(15000) });
+  const data = await jsonResponse(response, config.serviceUrl ? 'Price Watch service' : 'eBay listing lookup');
   if (!data.title) throw new Error('This listing has no title available.');
   return data;
 }
@@ -63,11 +70,11 @@ export async function getToken(clientId, clientSecret, fetchFn = fetch) {
 }
 
 export async function search(watch, config, token, fetchFn = fetch) {
-  const params = new URLSearchParams({ q: watch.query, filter: `price:[0..${watch.maxPrice}],priceCurrency:${config.currency}`, limit: '200', sort: 'newlyListed' });
-  const response = await fetchFn(`${API}/buy/browse/v1/item_summary/search?${params}`, {
-    headers: { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': config.marketplace }, signal: AbortSignal.timeout(15000)
-  });
-  const data = await jsonResponse(response, 'eBay search');
+  const params = new URLSearchParams(config.serviceUrl ? { q: watch.query, ceiling: String(watch.maxPrice), currency: config.currency, marketplace: config.marketplace } : { q: watch.query, filter: `price:[0..${watch.maxPrice}],priceCurrency:${config.currency}`, limit: '200', sort: 'newlyListed' });
+  const url = config.serviceUrl ? `${config.serviceUrl.replace(/\/$/, '')}/v1/inquiry/search?${params}` : `${API}/buy/browse/v1/item_summary/search?${params}`;
+  const headers = config.serviceUrl ? {} : { Authorization: `Bearer ${token}`, 'X-EBAY-C-MARKETPLACE-ID': config.marketplace };
+  const response = await fetchFn(url, { headers, redirect: 'error', signal: AbortSignal.timeout(15000) });
+  const data = await jsonResponse(response, config.serviceUrl ? 'Price Watch service' : 'eBay search');
   if (Array.isArray(data.errors) && data.errors.length) throw new Error('eBay returned a search error; this check will be retried.');
   if (data.itemSummaries === undefined && data.total === 0) return [];
   if (!Array.isArray(data.itemSummaries)) throw new Error('eBay returned an invalid search response.');

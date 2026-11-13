@@ -13,8 +13,6 @@ try {
         $credential = Import-Clixml -LiteralPath $credentialPath
         $env:EBAY_CLIENT_ID = $credential.UserName
         $env:EBAY_CLIENT_SECRET = $credential.GetNetworkCredential().Password
-    } elseif (-not $env:EBAY_CLIENT_ID -or -not $env:EBAY_CLIENT_SECRET) {
-        throw 'Set EBAY_CLIENT_ID and EBAY_CLIENT_SECRET first. See the README for setup.'
     }
     Push-Location $PSScriptRoot
     try {

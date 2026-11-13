@@ -99,6 +99,19 @@ test('search sends API filter and excludes ceiling results', async () => {
   assert.equal(request.options.headers['X-EBAY-C-MARKETPLACE-ID'], 'EBAY_US');
 });
 
+test('shared service searches and reference lookups require no eBay credentials', async () => {
+  const shared = { ...config, serviceUrl: 'https://service.example' };
+  const calls = [];
+  const fetchFn = async (url, options) => { calls.push({ url: new URL(url), options }); return { ok: true, json: async () => calls.length === 1 ? { itemSummaries: [item] } : { title: 'Reference speaker' } }; };
+  assert.equal((await search(config.watches[0], shared, null, fetchFn)).length, 1);
+  assert.equal((await getListing('123456789012', shared, null, fetchFn)).title, 'Reference speaker');
+  assert.equal(calls[0].url.pathname, '/v1/inquiry/search');
+  assert.equal(calls[1].url.pathname, '/v1/inquiry/reference');
+  assert.equal(calls[0].options.headers.Authorization, undefined);
+  assert.equal(calls[1].options.headers.Authorization, undefined);
+  assert.throws(() => validateConfig({ ...shared, serviceUrl: 'http://example.test' }), /HTTPS origin/);
+});
+
 test('treats API error payloads as failed searches, not empty results', async () => {
   await assert.rejects(search(config.watches[0], config, 'token', async () => ({ ok: true, json: async () => ({ errors: [{ errorId: 1 }] }) })), /search error/);
   await assert.rejects(search(config.watches[0], config, 'token', async () => ({ ok: true, json: async () => ({}) })), /invalid search response/);
