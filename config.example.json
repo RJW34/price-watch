@@ -1,0 +1,12 @@
+{
+  "marketplace": "EBAY_US",
+  "currency": "USD",
+  "intervalMinutes": 30,
+  "watches": [
+    {
+      "id": "my-speaker",
+      "query": "JL Audio 10W3v3-4 car subwoofer",
+      "maxPrice": 200
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+config.json
+.env
+.speaker-watch-state.json
+*.tmp
+node_modules/
