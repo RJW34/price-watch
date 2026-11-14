@@ -3,5 +3,6 @@ config.json
 .speaker-watch-state.json
 .price-watch-state.json
 .price-watch-update/
+/runtime/
 *.tmp
 node_modules/

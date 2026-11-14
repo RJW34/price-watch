@@ -3,7 +3,7 @@ param(
     [string[]]$PreviousInstall = @(),
     [switch]$NonInteractive,
     [switch]$NoShortcuts,
-    [switch]$SkipNodeCheck
+    [switch]$SkipRuntimeInstall
 )
 $ErrorActionPreference = 'Stop'
 $source = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\')
@@ -80,6 +80,25 @@ function Remove-OldProgram([string]$Root) {
             Remove-Item -LiteralPath $file -Force
         }
     }
+    $runtimeDir = Join-Path $Root 'runtime'
+    $runtimeInfo = Join-Path $runtimeDir 'runtime-info.json'
+    $runtimeExe = Join-Path $runtimeDir 'node.exe'
+    if ((Test-Path -LiteralPath $runtimeInfo -PathType Leaf) -and (Test-Path -LiteralPath $runtimeExe -PathType Leaf)) {
+        [void](Assert-RealDirectory $runtimeDir)
+        $infoItem = Get-Item -LiteralPath $runtimeInfo -Force
+        $exeItem = Get-Item -LiteralPath $runtimeExe -Force
+        if (($infoItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or ($exeItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Old runtime contains a linked file; it was left in place.' }
+        $info = Get-Content -LiteralPath $runtimeInfo -Raw | ConvertFrom-Json
+        if ($info.managedBy -eq 'price-watch' -and $info.sha256 -match '^[a-f0-9]{64}$' -and (File-SHA256 $runtimeExe) -eq $info.sha256) {
+            Remove-Item -LiteralPath $runtimeExe, $runtimeInfo -Force
+            $runtimeLicense = Join-Path $runtimeDir 'NODE-LICENSE.txt'
+            if (Test-Path -LiteralPath $runtimeLicense -PathType Leaf) {
+                $licenseItem = Get-Item -LiteralPath $runtimeLicense -Force
+                if (-not ($licenseItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) { Remove-Item -LiteralPath $runtimeLicense -Force }
+            }
+            if (-not (Get-ChildItem -LiteralPath $runtimeDir -Force | Select-Object -First 1)) { Remove-Item -LiteralPath $runtimeDir }
+        }
+    }
     foreach ($dir in ($directories.Keys | Sort-Object Length -Descending)) {
         if ((Test-Path -LiteralPath $dir) -and -not (Get-ChildItem -LiteralPath $dir -Force | Select-Object -First 1)) { Remove-Item -LiteralPath $dir }
     }
@@ -89,11 +108,6 @@ function Remove-OldProgram([string]$Root) {
 try {
     [void](Assert-RealDirectory $source)
     if ($source -eq $destination -or $source.StartsWith($destination + '\', [StringComparison]::OrdinalIgnoreCase) -or $destination.StartsWith($source + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Choose an installation folder separate from the downloaded files.' }
-    if (-not $SkipNodeCheck) {
-        if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node.js 20 or later is required. Install it from https://nodejs.org/ and run this installer again.' }
-        $nodeVersion = (& node --version).TrimStart('v').Split('.')[0]
-        if ([int]$nodeVersion -lt 20) { throw 'Node.js 20 or later is required. Update it from https://nodejs.org/ and run this installer again.' }
-    }
     $manifestPath = Join-Path $source 'update-manifest.json'
     $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
     if ($manifest.version -ne 1 -or -not $manifest.files) { throw 'The downloaded update manifest is invalid.' }
@@ -130,6 +144,7 @@ try {
     Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $stage 'update-manifest.json')
     if (Test-Path -LiteralPath $destination) { Copy-Personal $destination $stage }
     foreach ($previous in $previousDirs) { Copy-Personal $previous $stage }
+    if (-not $SkipRuntimeInstall) { & (Join-Path $stage 'scripts\Install-NodeRuntime.ps1') -TargetDirectory (Join-Path $stage 'runtime') }
     if (Test-Path -LiteralPath $destination) {
         $backup = $destination + '.previous-' + [guid]::NewGuid().ToString('N')
         Move-Item -LiteralPath $destination -Destination $backup
@@ -143,6 +158,12 @@ try {
         $shortcut.WorkingDirectory = $destination
         $shortcut.Description = 'Search for products and track eBay prices'
         $shortcut.Save()
+        $addShortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $programs 'Price Watch - Add Product.lnk'))
+        $addShortcut.TargetPath = Join-Path $destination 'scripts\Start-PriceWatch.cmd'
+        $addShortcut.Arguments = '--setup'
+        $addShortcut.WorkingDirectory = $destination
+        $addShortcut.Description = 'Add another Price Watch product inquiry'
+        $addShortcut.Save()
     }
     foreach ($old in (@($backup) + $previousDirs)) {
         if ($old -and $old -ne $destination -and (Test-Path -LiteralPath $old)) {

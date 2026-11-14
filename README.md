@@ -6,7 +6,7 @@ The starter inquiry searches for **Hertz Cento Pro CPK 690** speaker sets with a
 
 ## Try the demo
 
-Install [Node.js 20 or newer](https://nodejs.org/) and run these commands from this folder:
+For development or a manual installation, install [Node.js 20 or newer](https://nodejs.org/) and run these commands from this folder:
 
 ```powershell
 npm run demo
@@ -17,7 +17,9 @@ The demo uses invented listings, needs no account or network connection, sends n
 
 ## Install and automatic updates
 
-On Windows, install [Node.js 20 or newer](https://nodejs.org/), [download the ZIP](https://github.com/RJW34/price-watch/archive/refs/heads/master.zip), and extract it. Open the extracted `scripts` folder and double-click `Install-PriceWatch.cmd`. The installer puts Price Watch in your user account's Programs folder and creates a Start menu shortcut. Open **Price Watch** from the Start menu to run setup and start watching. The terminal-based instructions below also work for users who prefer them.
+On 64-bit Windows, [download the ZIP](https://github.com/RJW34/price-watch/archive/refs/heads/master.zip) and extract it. Open the extracted `scripts` folder and double-click `Install-PriceWatch.cmd`. The installer downloads and verifies an app-local Node.js runtime automatically; you do not need to install Node.js or Git yourself. The download is about 40 MB and requires an internet connection. The installer puts Price Watch in your user account's Programs folder and creates Start menu shortcuts. Open **Price Watch** from the Start menu to run setup and start watching. No administrator permissions are needed for the standard per-user install.
+
+The runtime is kept inside the Price Watch folder and does not change the computer's system-wide Node.js installation. The installer installs a pinned Node.js LTS version after verifying published SHA-256 checksums. Re-running the installer installs the version bundled with that installer; the app's code updater does not replace the runtime. If an existing installation has no runtime, its updated Start shortcut sets one up on the next launch. macOS and Linux users currently need to install Node.js 20 or newer themselves and use the terminal commands below.
 
 When upgrading an existing installation, the installer transfers its configuration and alert history and removes the replaced program files. If you have older extracted copies elsewhere, select each folder when prompted; the installer checks that it is a Price Watch copy, transfers settings where needed, and removes its recognized program files. It leaves personal files and unrecognized folders alone. If several copies have different settings, the current installed copy takes priority, followed by the folders selected in order. Git checkouts are not removed. The installer cannot find arbitrary old ZIP folders automatically; they need to be selected.
 
@@ -35,9 +37,9 @@ Maintainers must run `npm run build:update-manifest` after changing any managed 
 
 1. Open **Price Watch** from the Windows Start menu. On first launch, setup starts automatically. No eBay developer account or eBay credentials are needed.
 2. Press Enter to use the starter product and price, or enter another product name or eBay listing link. Review the search preview, choose terminal or Discord alerts, and save. See the [alert guide](ALERTS.md) for Discord setup.
-3. Keep the Price Watch window open to receive alerts. To add a product later, open a terminal in the installation folder and run `npm run setup` again. Alternatively edit `config.json` manually; each watch needs a distinct, stable `id`.
+3. Keep the Price Watch window open to receive alerts. To add a product later, open **Price Watch - Add Product** from the Start menu. Alternatively edit `config.json` manually; each watch needs a distinct, stable `id`.
 
-For terminal use, run `npm run setup` once, then `npm start` to monitor, or `npm start -- --once` for one check. Stop monitoring with Ctrl+C. To use another configuration file, add `--config path/to/config.json`.
+For terminal use with a system-wide Node.js installation, run `npm run setup` once, then `npm start` to monitor, or `npm start -- --once` for one check. The app-local runtime includes Node.js, not npm; Windows users can instead run `powershell -ExecutionPolicy Bypass -File .\start-watcher.ps1 -Setup` and then `powershell -ExecutionPolicy Bypass -File .\start-watcher.ps1`. Stop monitoring with Ctrl+C. To use another configuration file with the Node command, add `--config path/to/config.json`.
 
 Price Watch sends the product query, price ceiling, marketplace and currency to its shared service, which searches eBay using server-side credentials. The service applies shared daily and per-client request limits, so a busy service may temporarily return a limit error. It keeps a salted hash of the connecting IP address in its rate-limit counters for up to a few days. The default interval is 30 minutes; permitted values range from 5 to 1,440 minutes. After failures, retry delays double up to 24 hours and return to normal after a successful check. Keep the computer awake and the process running for continuous monitoring.
 
