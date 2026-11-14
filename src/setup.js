@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { readFile, writeFile, rename } from 'node:fs/promises';
-import { validateConfig, listingId, getListing, getToken, search, describe } from './watcher.js';
+import { validateConfig, withServiceDefaults, listingId, getListing, getToken, search, describe } from './watcher.js';
 
 if (!stdin.isTTY || !stdout.isTTY) {
   console.error('Setup requires an interactive terminal. Run npm run setup.');
@@ -14,10 +14,10 @@ const configFile = 'config.json';
 
 async function main() {
   let config;
-  try { config = validateConfig(JSON.parse(await readFile(configFile, 'utf8'))); }
+  try { config = validateConfig(withServiceDefaults(JSON.parse(await readFile(configFile, 'utf8')))); }
   catch (error) {
     if (error.code !== 'ENOENT') throw new Error(`Cannot use existing config: ${error.message}`);
-    config = { marketplace: 'EBAY_US', currency: 'USD', intervalMinutes: 30, watches: [] };
+    config = withServiceDefaults({ marketplace: 'EBAY_US', currency: 'USD', intervalMinutes: 30, watches: [] });
     if (process.env.PRICE_WATCH_SERVICE_URL) config.serviceUrl = process.env.PRICE_WATCH_SERVICE_URL;
   }
   if (config.watches.length >= 20) throw new Error('The configuration already has 20 watches. Remove one from config.json before adding another.');
@@ -60,6 +60,7 @@ async function main() {
   do {
     const answer = await ask(`Alert when item price is below (${config.currency})${useStarter ? ' [400]' : ''}: `);
     maxPrice = Number(answer || (useStarter ? '400' : ''));
+    if (config.serviceUrl && !/^\d{1,9}(?:\.\d{1,2})?$/.test(String(maxPrice))) { console.log('Enter a price with no more than two decimal places.'); maxPrice = 0; }
   } while (!Number.isFinite(maxPrice) || maxPrice <= 0);
   console.log('The ceiling excludes shipping, tax, and fees. Exact-ceiling prices do not qualify.');
   let id = `watch-${Date.now()}`;

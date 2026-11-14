@@ -2,17 +2,26 @@ import { access, readFile, writeFile, rename } from 'node:fs/promises';
 
 const API = 'https://api.ebay.com';
 const SCOPE = 'https://api.ebay.com/oauth/api_scope';
+export const DEFAULT_SERVICE_URL = 'https://price-watch-api-rjw34.surerat65.chatgpt.site';
+
+export function withServiceDefaults(config) {
+  return config && config.serviceUrl === undefined ? { ...config, serviceUrl: DEFAULT_SERVICE_URL } : config;
+}
 
 export function validateConfig(config) {
   if (!config || !/^[A-Z]{3}$/.test(config.currency || '') || !/^EBAY_[A-Z]+$/.test(config.marketplace || '')) throw new Error('Set a valid currency (e.g. USD) and marketplace (e.g. EBAY_US).');
   if (!Number.isFinite(config.intervalMinutes) || config.intervalMinutes < 5 || config.intervalMinutes > 1440) throw new Error('intervalMinutes must be between 5 and 1440.');
   if (config.notification && !['terminal', 'discord'].includes(config.notification)) throw new Error('notification must be terminal or discord.');
   if (config.autoUpdate !== undefined && typeof config.autoUpdate !== 'boolean') throw new Error('autoUpdate must be true or false.');
-  if (config.serviceUrl !== undefined) {
+  if (config.serviceUrl !== undefined && config.serviceUrl !== null) {
     try {
       const service = new URL(config.serviceUrl);
       if (service.protocol !== 'https:' || service.username || service.password || service.pathname !== '/' || service.search || service.hash) throw new Error('invalid');
     } catch { throw new Error('serviceUrl must be an HTTPS origin without a path.'); }
+  }
+  if (config.serviceUrl) {
+    const supported = { EBAY_US: 'USD', EBAY_GB: 'GBP', EBAY_CA: 'CAD', EBAY_AU: 'AUD', EBAY_DE: 'EUR', EBAY_FR: 'EUR', EBAY_IT: 'EUR', EBAY_ES: 'EUR' };
+    if (supported[config.marketplace] !== config.currency) throw new Error('The shared service does not support this marketplace and currency combination.');
   }
   if (!Array.isArray(config.watches) || config.watches.length === 0) throw new Error('Add at least one watch.');
   if (config.watches.length > 20) throw new Error('At most 20 watches are supported per configuration.');
@@ -50,7 +59,8 @@ export async function getListing(id, config, token, fetchFn = fetch) {
 async function jsonResponse(response, operation) {
   if (!response.ok) {
     // Do not echo response bodies: they could contain sensitive information.
-    const error = new Error(`${operation} failed (HTTP ${response.status}). Check credentials, Browse API access, marketplace, and eBay service status.`);
+    const detail = operation === 'Price Watch service' ? 'The shared service may be unavailable or at its request limit; try again later.' : 'Check credentials, Browse API access, marketplace, and eBay service status.';
+    const error = new Error(`${operation} failed (HTTP ${response.status}). ${detail}`);
     error.status = response.status;
     throw error;
   }

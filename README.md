@@ -33,24 +33,17 @@ Maintainers must run `npm run build:update-manifest` after changing any managed 
 
 ## Set up live checks
 
-1. Until the shared service is available to users, create an [eBay developer account and application](https://developer.ebay.com/). Obtain **production** client ID and client secret, and ensure your application has access to the [Browse API](https://developer.ebay.com/develop/api/buy/browse_api). Production Buy API access may require eBay approval; an API key alone may not grant it.
-2. In PowerShell, set credentials for the current terminal session. Enter them at the prompts rather than putting them in a command or the repository:
+1. Open **Price Watch** from the Windows Start menu. On first launch, setup starts automatically. No eBay developer account or eBay credentials are needed.
+2. Press Enter to use the starter product and price, or enter another product name or eBay listing link. Review the search preview, choose terminal or Discord alerts, and save. See the [alert guide](ALERTS.md) for Discord setup.
+3. Keep the Price Watch window open to receive alerts. To add a product later, open a terminal in the installation folder and run `npm run setup` again. Alternatively edit `config.json` manually; each watch needs a distinct, stable `id`.
 
-   ```powershell
-   $env:EBAY_CLIENT_ID = Read-Host 'eBay production client ID'
-   $credential = Get-Credential -UserName $env:EBAY_CLIENT_ID -Message 'Enter the eBay production client secret as the password'
-   $env:EBAY_CLIENT_SECRET = $credential.GetNetworkCredential().Password
-   ```
+For terminal use, run `npm run setup` once, then `npm start` to monitor, or `npm start -- --once` for one check. Stop monitoring with Ctrl+C. To use another configuration file, add `--config path/to/config.json`.
 
-3. Run `npm run setup` to create a product inquiry. Press Enter to use the starter product and price, or enter another name or listing link. Run setup again to add watches. Alternatively copy `config.example.json` to `config.json` and edit it manually. Give each additional watch a distinct, stable `id`.
-4. Choose terminal or Discord alerts. For Discord setup, follow the [alert guide](ALERTS.md); the webhook must be set in the same terminal.
-5. Run `npm start -- --once` for one check, or `npm start` to check repeatedly while the terminal is open. Stop with Ctrl+C. To use another configuration file, add `--config path/to/config.json`.
+Price Watch sends the product query, price ceiling, marketplace and currency to its shared service, which searches eBay using server-side credentials. The service applies shared daily and per-client request limits, so a busy service may temporarily return a limit error. It keeps a salted hash of the connecting IP address in its rate-limit counters for up to a few days. The default interval is 30 minutes; permitted values range from 5 to 1,440 minutes. After failures, retry delays double up to 24 hours and return to normal after a successful check. Keep the computer awake and the process running for continuous monitoring.
 
-On the original development computer, `start-watcher.ps1` can also load an existing Windows-encrypted credential file outside this repository. Other users can use the environment-variable setup above; the repository does not include credentials.
+Advanced users who operate their own eBay application can set `"serviceUrl": null` in `config.json` and provide `EBAY_CLIENT_ID` and `EBAY_CLIENT_SECRET` in their terminal environment. Do not put credentials in `config.json` or the repository. A custom HTTPS origin can be specified with `serviceUrl`. The shared service supports the US, UK, Canada, Australia, Germany, France, Italy and Spain marketplaces with their corresponding currencies.
 
-Keep the computer awake and the process running for continuous monitoring. The default interval is 30 minutes; permitted values range from 5 to 1,440 minutes. Each check uses one search request per watch (up to 20 watches) plus authentication. Consider eBay's usage limits when choosing the interval. After failures, retry delays double up to 24 hours and return to normal after a successful check. Credentials are read from environment variables, not the configuration file. Windows environment variables set this way last only for that terminal session.
-
-The repository also contains an experimental shared-service implementation in `src/service.mjs` and `scripts/service-schema.sql`. The client can use a configured HTTPS `serviceUrl` instead of local eBay credentials, but a reachable shared service is not yet enabled for end users. Until one is available, the eBay credential setup above remains necessary. The service limits eBay requests globally and per client; the application owner is responsible for configuring secrets, hosting, quota monitoring, and checking eBay's requirements for end-user access.
+The shared-service implementation is in `src/service.mjs` and `scripts/service-schema.sql`. Its operator is responsible for hosting, secret management, quota monitoring, and reviewing eBay's requirements for end-user access.
 
 ## Product inquiry and notifications
 
@@ -73,8 +66,8 @@ Choose **terminal** or **Discord** alerts during setup. Discord needs a channel 
 
 ## Troubleshooting
 
-- **401 or 403:** Check the production credentials and whether eBay has enabled Browse API access for the application.
-- **429:** Increase the interval and check your eBay usage limits; failed checks retry with increasing delays.
+- **Service unavailable or 429:** The shared service may be offline or at its request limit; failed checks retry with increasing delays. If the issue persists, contact the person who provided the app.
+- **401 or 403 in direct eBay mode:** Check the production credentials and whether eBay has enabled Browse API access for the application.
 - **No matches:** Verify the spelling and ceiling, try a broader query, and check the matching marketplace and currency.
 - **Notifications missing:** Confirm the process is running and the webhook variable is set in that same terminal. Discord errors appear in the terminal and retry on the next check.
 

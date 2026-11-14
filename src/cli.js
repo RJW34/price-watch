@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { validateConfig, getToken, search, qualifies, loadState, migrateStateFile, saveState, processBatch, sendDiscord, retryDelayMinutes } from './watcher.js';
+import { validateConfig, withServiceDefaults, getToken, search, qualifies, loadState, migrateStateFile, saveState, processBatch, sendDiscord, retryDelayMinutes } from './watcher.js';
 import { checkForUpdate, UPDATE_INTERVAL_MS } from './updater.js';
 
 const args = process.argv.slice(2);
@@ -18,7 +18,7 @@ const configPath = resolve(configIndex >= 0 ? args[configIndex + 1] : demo ? 'co
 const statePath = resolve('.price-watch-state.json');
 
 async function main() {
-  const config = validateConfig(JSON.parse(await readFile(configPath, 'utf8')));
+  const config = validateConfig(withServiceDefaults(JSON.parse(await readFile(configPath, 'utf8'))));
   let lastUpdateCheck = 0;
   const updateIfDue = async () => {
     if (demo || config.autoUpdate === false || process.env.PRICE_WATCH_SUPERVISED !== '1' || Date.now() - lastUpdateCheck < UPDATE_INTERVAL_MS) return false;

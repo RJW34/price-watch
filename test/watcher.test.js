@@ -3,10 +3,19 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { validateConfig, qualifies, processBatch, search, sendDiscord, getToken, listingId, getListing, MAX_HISTORY, retryDelayMinutes, migrateStateFile } from '../src/watcher.js';
+import { validateConfig, withServiceDefaults, DEFAULT_SERVICE_URL, qualifies, processBatch, search, sendDiscord, getToken, listingId, getListing, MAX_HISTORY, retryDelayMinutes, migrateStateFile } from '../src/watcher.js';
 
 const config = { marketplace: 'EBAY_US', currency: 'USD', intervalMinutes: 30, watches: [{ id: 'speaker', query: 'specific speaker', maxPrice: 100 }] };
 const item = { itemId: 'one', itemWebUrl: 'https://www.ebay.com/itm/1', title: 'Speaker', price: { value: '99.99', currency: 'USD' } };
+
+test('new and older configurations use shared service unless explicitly disabled', () => {
+  const resolved = withServiceDefaults(config);
+  assert.equal(resolved.serviceUrl, DEFAULT_SERVICE_URL);
+  assert.equal(config.serviceUrl, undefined);
+  assert.equal(validateConfig(resolved).serviceUrl, DEFAULT_SERVICE_URL);
+  assert.equal(validateConfig(withServiceDefaults({ ...config, serviceUrl: null })).serviceUrl, null);
+  assert.throws(() => validateConfig(withServiceDefaults({ ...config, currency: 'EUR' })), /marketplace and currency/);
+});
 
 test('validates watches and prevents duplicate ids', () => {
   assert.equal(validateConfig(config), config);
